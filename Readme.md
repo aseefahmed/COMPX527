@@ -4,5 +4,5 @@
 2. Define the AWS region where you are going to deploy the infrastructues with the following command:
    `export AWS_DEFAULT_REGION=us-east-1'
 3. Run the following terraform commands from the root folder"
-   `terraform init`
-   `terraform apply -auto-approve`
+   ```terraform init```
+   ```terraform apply -auto-approve```
