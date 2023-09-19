@@ -1,7 +1,7 @@
 # Prerequisites
 
 1. Make sure AWS CLI is installed and configured on your local machine
-2. Define the AWS region where you are going to deploy the infrastructues with the following command:
+2. Define the AWS region where you are going to deploy the infrastructures with the following command:
    ```
    export AWS_DEFAULT_REGION=us-east-1
    ```
