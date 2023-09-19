@@ -4,44 +4,55 @@ provider "aws" {
 }
 
 # Create a VPC
-resource "aws_vpc" "example" {
+resource "aws_vpc" "vpc" {
   cidr_block = "10.0.0.0/16" # Change this to your desired VPC CIDR block
 }
 
 # Create an Internet Gateway (IGW)
 resource "aws_internet_gateway" "igw" {
-  vpc_id = aws_vpc.example.id
+  vpc_id = aws_vpc.vpc.id
 }
 
 resource "aws_route_table" "rt" {
-  vpc_id = aws_vpc.example.id
+  vpc_id = aws_vpc.vpc.id
 }
 
-resource "aws_route" "example" {
+resource "aws_route" "awsrt" {
   route_table_id         = aws_route_table.rt.id
   destination_cidr_block = "0.0.0.0/0" 
   gateway_id             = aws_internet_gateway.igw.id
 }
 
 # Create two private subnets in the VPC
+resource "aws_subnet" "subnet1" {
+  vpc_id                  = aws_vpc.vpc.id
+  cidr_block              = "10.0.1.0/24"
+  availability_zone       = "us-east-1a"
+  map_public_ip_on_launch = false
+}
+
 resource "aws_subnet" "subnet2" {
-  vpc_id                  = aws_vpc.example.id
-  cidr_block              = "10.0.1.0/24" # Change this to your desired subnet CIDR block
-  availability_zone       = "us-east-1a" # Change to your desired availability zone
+  vpc_id                  = aws_vpc.vpc.id
+  cidr_block              = "10.0.2.0/24" 
+  availability_zone       = "us-east-1b" 
   map_public_ip_on_launch = false
 }
 
 
 resource "aws_route_table_association" "rtb1" {
+  subnet_id      = aws_subnet.subnet1.id
+  route_table_id = aws_route_table.rt.id
+}
+resource "aws_route_table_association" "rtb2" {
   subnet_id      = aws_subnet.subnet2.id
-  route_table_id = aws_route_table.example.id
+  route_table_id = aws_route_table.rt.id
 }
 
 # Create a security group that allows all traffic
 resource "aws_security_group" "allow_all" {
   name        = "allow-all"
   description = "Allow all inbound and outbound traffic"
-  vpc_id      = aws_vpc.example.id
+  vpc_id      = aws_vpc.vpc.id
 
   ingress {
     from_port   = 0
@@ -99,30 +110,30 @@ resource "aws_iam_role" "ecs_execution_role" {
 }
 
 # Create an ECS cluster
-resource "aws_ecs_cluster" "example" {
+resource "aws_ecs_cluster" "ecsclstr" {
   name = "cluster-new"
 }
 
 # Create an ECS service with 3 replicas
 resource "aws_ecs_service" "nginx_service" {
   name            = "nginx-service-new"
-  cluster         = aws_ecs_cluster.example.id
+  cluster         = aws_ecs_cluster.ecsclstr.id
   task_definition = aws_ecs_task_definition.nginx_task.arn
   launch_type     = "FARGATE"
   desired_count   = 3
   network_configuration {
-    subnets = [aws_subnet.private_subnet1.id, aws_subnet.subnet2.id]
+    subnets = [aws_subnet.subnet1.id, aws_subnet.subnet2.id]
     security_groups = [aws_security_group.allow_all.id]
     assign_public_ip = true
   }
 }
 
 # Create an Application Load Balancer (ALB)
-resource "aws_lb" "example" {
+resource "aws_lb" "alb" {
   name               = "alb"
   internal           = false
   load_balancer_type = "application"
-  subnets            = [aws_subnet.private_subnet1.id, aws_subnet.subnet2.id]
+  subnets            = [aws_subnet.subnet1.id, aws_subnet.subnet2.id]
 }
 
 # Create a target group for the ECS service
@@ -130,12 +141,12 @@ resource "aws_lb_target_group" "nginx_target_group" {
   name     = "tg"
   port     = 80
   protocol = "HTTP"
-  vpc_id   = aws_vpc.example.id
+  vpc_id   = aws_vpc.vpc.id
 }
 
-output "result" {
-    value = aws_ecs_service.nginx_service
-}
+# output "result" {
+#     value = aws_ecs_service.nginx_service
+# }
 # # Attach the ECS service to the target group
 # resource "aws_lb_target_group_attachment" "ecs_attachment" {
 #   target_group_arn = aws_lb_target_group.nginx_target_group.arn
@@ -144,7 +155,7 @@ output "result" {
 
 # # Create a listener for the ALB
 # resource "aws_lb_listener" "example" {
-#   load_balancer_arn = aws_lb.example.arn
+#   load_balancer_arn = aws_lb.alb.arn
 #   port              = 80
 #   protocol          = "HTTP"
 
