@@ -10,3 +10,9 @@
    terraform init
    terraform apply -auto-approve
    ```
+4. Grab the website URL from the terraform output like this:
+<img width="801" alt="image" src="https://github.com/aseefahmed/COMPX527/assets/576117/e92e9286-6057-4706-81f7-6f664103f172">
+
+5. Log in to the application with the following credential
+   email: demo_user@gmail.com
+   password: Demopassword123
