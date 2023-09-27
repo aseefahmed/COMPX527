@@ -3,6 +3,9 @@ provider "aws" {
   region = "us-east-1" # Change to your desired AWS region
 }
 
+resource "random_pet" "unique_pet" {
+}
+
 # Create a VPC
 resource "aws_vpc" "vpc" {
   cidr_block = "10.0.0.0/16" # Change this to your desired VPC CIDR block
@@ -50,7 +53,7 @@ resource "aws_route_table_association" "rtb2" {
 
 # Create a security group that allows all traffic
 resource "aws_security_group" "allow_all" {
-  name        = "allow-all"
+  name        = "allow-all-${random_pet.unique_pet.id}"
   description = "Allow all inbound and outbound traffic"
   vpc_id      = aws_vpc.vpc.id
 
@@ -71,7 +74,7 @@ resource "aws_security_group" "allow_all" {
 
 # Create an ECS task definition with Nginx image
 resource "aws_ecs_task_definition" "nginx_task" {
-  family                   = "nginx-task"
+  family                   = "nginx-task-${random_pet.unique_pet.id}"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
   cpu                      = 1024
@@ -80,7 +83,7 @@ resource "aws_ecs_task_definition" "nginx_task" {
 
   container_definitions = jsonencode([
     {
-      name  = "nginx-container"
+      name  = "nginx-container-${random_pet.unique_pet.id}"
       image = "aseefahmed/waikato_health_app:latest"
       portMappings = [
         {
@@ -94,7 +97,7 @@ resource "aws_ecs_task_definition" "nginx_task" {
 
 # Create an IAM role for ECS task execution
 resource "aws_iam_role" "ecs_execution_role" {
-  name = "ecs_execution_role_new"
+  name = "ecs_execution_role_new-${random_pet.unique_pet.id}"
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
     Statement = [
@@ -116,31 +119,52 @@ resource "aws_ecs_cluster" "ecsclstr" {
 
 # Create an ECS service with 3 replicas
 resource "aws_ecs_service" "nginx_service" {
-  name            = "nginx-service-new"
+  name            = "nginx-service-new-${random_pet.unique_pet.id}"
   cluster         = aws_ecs_cluster.ecsclstr.id
   task_definition = aws_ecs_task_definition.nginx_task.arn
   launch_type     = "FARGATE"
   desired_count   = 3
+  load_balancer {
+    target_group_arn = aws_lb_target_group.nginx_target_group.arn
+    container_name   = "nginx-container-${random_pet.unique_pet.id}"
+    container_port   = 80
+  }
   network_configuration {
     subnets = [aws_subnet.subnet1.id, aws_subnet.subnet2.id]
     security_groups = [aws_security_group.allow_all.id]
     assign_public_ip = true
   }
+
 }
 
 # Create an Application Load Balancer (ALB)
 resource "aws_lb" "alb" {
-  name               = "alb"
+  # unique name to alb
+  name               = "alb-${random_pet.unique_pet.id}"
   internal           = false
   load_balancer_type = "application"
   subnets            = [aws_subnet.subnet1.id, aws_subnet.subnet2.id]
 }
 
+resource "aws_lb_listener" "web" {
+  load_balancer_arn = aws_lb.alb.arn
+  port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.nginx_target_group.arn
+  }
+  
+}
+
+
 # Create a target group for the ECS service
 resource "aws_lb_target_group" "nginx_target_group" {
-  name     = "tg"
+  name     = "tg-${random_pet.unique_pet.id}"
   port     = 80
   protocol = "HTTP"
+  target_type = "alb"
   vpc_id   = aws_vpc.vpc.id
 }
 
@@ -148,10 +172,16 @@ resource "aws_lb_target_group" "nginx_target_group" {
 #     value = aws_ecs_service.nginx_service
 # }
 # # Attach the ECS service to the target group
-# resource "aws_lb_target_group_attachment" "ecs_attachment" {
-#   target_group_arn = aws_lb_target_group.nginx_target_group.arn
-#   target_id        = aws_ecs_service.nginx_service.id
-# }
+# resource "aws_lb_targy
+
+output "target_group_arn" {
+    value = aws_lb_target_group.nginx_target_group.arn
+    description = "Target Group ARN"
+}
+output "nginx_service" {
+    value = aws_ecs_service.nginx_service
+    description = "ECS Service ID"
+}
 
 # # Create a listener for the ALB
 # resource "aws_lb_listener" "example" {
