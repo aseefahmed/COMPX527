@@ -124,6 +124,11 @@ resource "aws_ecs_service" "nginx_service" {
   task_definition = aws_ecs_task_definition.nginx_task.arn
   launch_type     = "FARGATE"
   desired_count   = 3
+  load_balancer {
+    target_group_arn = aws_lb_target_group.nginx_target_group.arn
+    container_name   = "nginx-container-${random_pet.unique_pet.id}"
+    container_port   = 80
+  }
   network_configuration {
     subnets = [aws_subnet.subnet1.id, aws_subnet.subnet2.id]
     security_groups = [aws_security_group.allow_all.id]
@@ -139,6 +144,7 @@ resource "aws_lb" "alb" {
   internal           = false
   load_balancer_type = "application"
   subnets            = [aws_subnet.subnet1.id, aws_subnet.subnet2.id]
+  security_groups    = [aws_security_group.allow_all.id]
 }
 
 resource "aws_lb_listener" "web" {
@@ -159,6 +165,7 @@ resource "aws_lb_target_group" "nginx_target_group" {
   name     = "tg-${random_pet.unique_pet.id}"
   port     = 80
   protocol = "HTTP"
+  target_type = "ip"
   vpc_id   = aws_vpc.vpc.id
 }
 
@@ -166,19 +173,13 @@ resource "aws_lb_target_group" "nginx_target_group" {
 #     value = aws_ecs_service.nginx_service
 # }
 # # Attach the ECS service to the target group
-# resource "aws_lb_target_group_attachment" "ecs_attachment" {
-#   target_group_arn = aws_lb_target_group.nginx_target_group.arn
-#   target_id        = aws_ecs_service.nginx_service.name
-# }
+# resource "aws_lb_targy
 
-output "target_group_arn" {
-    value = aws_lb_target_group.nginx_target_group.arn
-    description = "Target Group ARN"
+output "website_url" {
+    value = aws_lb.alb.dns_name
+    description = "Website URL"
 }
-output "nginx_service" {
-    value = aws_ecs_service.nginx_service
-    description = "ECS Service ID"
-}
+
 
 # # Create a listener for the ALB
 # resource "aws_lb_listener" "example" {
