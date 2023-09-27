@@ -81,7 +81,7 @@ resource "aws_ecs_task_definition" "nginx_task" {
   container_definitions = jsonencode([
     {
       name  = "nginx-container"
-      image = "nginx:latest"
+      image = "aseefahmed/waikato_health_app:latest"
       portMappings = [
         {
           containerPort = 80
